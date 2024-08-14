@@ -30,7 +30,7 @@
 #include <fstream>
 #include <ctime>
 
-#include "zlib/zlib.h"
+#include "zlib.h"
 
 
 #define ZIP_MIN_FILE_SIZE 30

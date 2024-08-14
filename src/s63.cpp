@@ -31,7 +31,7 @@
 #include "simple_zip.h"
 #include "blowfish.h"
 #include "s63utils.hpp"
-#include "zlib/zlib.h"
+#include "zlib.h"
 
 #define VALID_ZIP_SIGNATURE 0x04034b50
 #define SECONDS_TO_DAYS(S) S/86400

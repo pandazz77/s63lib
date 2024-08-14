@@ -23,3 +23,6 @@ backup
 *.vbproj.user
 ipch
 *sdf
+
+build
+.vscode
