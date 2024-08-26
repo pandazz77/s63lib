@@ -257,7 +257,8 @@ bool SimpleZip::unzip(const std::string& in, std::string& out) {
 		puts("wrong crc\n");
 		return false;
 	}
-	
+
+	return true;
 }
 
 bool SimpleZip::zip(const std::string& filename, const std::string& in, std::string& out) {
