@@ -12,5 +12,5 @@ set(HDRS
     ${CMAKE_CURRENT_SOURCE_DIR}/INIReader.h
 )
 
-add_library(${PROJECT_NAME} STATIC ${SRCS} ${HDRS})
+add_library(${PROJECT_NAME} SHARED ${SRCS} ${HDRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

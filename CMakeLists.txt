@@ -34,6 +34,6 @@ if(BUILD_EXTRACTOR)
     target_include_directories(s63extractor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 endif()
 
-add_library(${PROJECT_NAME} STATIC ${SRCS} ${HDRS})
+add_library(${PROJECT_NAME} SHARED ${SRCS} ${HDRS})
 target_link_libraries(${PROJECT_NAME} blowfish zlib)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
