@@ -13,6 +13,7 @@
 #include <exception>
 #include <iostream>
 #include <cassert>
+#include <cstdint>
 
  //Initialization with a fixed string which consists of the hexadecimal digits of PI (less the initial 3)
  //P-array, 18 32-bit subkeys

@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(s63lib)
 
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/blowfish)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/inih)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/zlib)
