@@ -47,6 +47,12 @@ class S63Exception: public std::exception{
 			S63_ERR_CRC
 		};
 
+        enum S63Warning {
+            WARNING_OK,
+            WARNING_EXPIRED,
+            WARNING_EXPIRING_30,
+        };
+
 
 		S63Exception(const S63Error &code,const std::string &message): 
             _code(code), _message(message) {}
@@ -68,7 +74,7 @@ class S63 {
 
 public:
 	
-	static inline bool validateCellPermit(const std::string& permit, const std::string& HW_ID);
+	static inline S63Exception::S63Warning validateCellPermit(const std::string& permit, const std::string& HW_ID);
 	static std::string createUserPermit(const std::string& M_KEY, const std::string& HW_ID, const std::string& M_ID);
 	static std::string extractHwIdFromUserpermit(const std::string& userpermit, const std::string& M_KEY);
 
@@ -84,11 +90,11 @@ public:
 	static void decryptAndUnzipCellByKey(const std::string& in_path, const std::pair<std::string, std::string>& keys, const std::string& out_path);
 
 protected:
-	static bool _validateCellPermit(const std::string& permit, const std::string& HW_ID6);
+	static S63Exception::S63Warning _validateCellPermit(const std::string& permit, const std::string& HW_ID6);
 	static CBlowFish m_bf;
 };
 
-bool S63::validateCellPermit(const std::string& permit, const std::string& HW_ID) {
+S63Exception::S63Warning S63::validateCellPermit(const std::string& permit, const std::string& HW_ID) {
 	std::string HW_ID6 = HW_ID + HW_ID[0];
 	return _validateCellPermit(permit,HW_ID6);
 }

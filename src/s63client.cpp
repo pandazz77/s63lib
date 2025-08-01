@@ -111,9 +111,7 @@ void S63Client::setHWID(const std::string& HW_ID) {
 
 bool S63Client::installCellPermit(const std::string& cellpermit) {
 
-	if (!_validateCellPermit(cellpermit, m_hwid6)) {
-		return false;
-	}
+	_validateCellPermit(cellpermit, m_hwid6);
 
 	string cellname = cellpermit.substr(0, VALID_CELLNAME_SIZE);
 

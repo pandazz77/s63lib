@@ -43,12 +43,11 @@ using namespace hexutils;
 
 CBlowFish S63::m_bf;
 
-bool S63::_validateCellPermit(const std::string& cellpermit, const std::string& HW_ID6) {
-
+S63Exception::S63Warning S63::_validateCellPermit(const std::string& cellpermit, const std::string& HW_ID6) {
+	S63Exception::S63Warning warning = S63Exception::WARNING_OK;
 	
 	if (cellpermit.size() != VALID_CELLPERMIT_SIZE) {
-		puts("SSE 12 - CELL PERMIT INCORRECT FORMAT\n");
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 12 - CELL PERMIT INCORRECT FORMAT");
 	}
 	
 	/* CRC32 contains the encrypted check sum for the Cell Permit.It is
@@ -59,7 +58,7 @@ bool S63::_validateCellPermit(const std::string& cellpermit, const std::string& 
 	// 2) Convert these 16 hex characters to 8 bytes.
 	std::string permit_crc32 = hex_to_string(cellpermit, VALID_CELLPERMIT_SIZE - 16, 16);
 	if (permit_crc32.size() != 8) {
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_CRC,"Invalid permit crc32");
 	}
 
 	// 3) Decrypt the crc32 using the Blowfish algorithm with HW_ID6 as the key.
@@ -75,41 +74,39 @@ bool S63::_validateCellPermit(const std::string& cellpermit, const std::string& 
 	// 5) Compare the crc from permit and calculated one.If they are the same, the Cell Permit is valid.If
 	//	they differ, the Cell Permit is corrupt and Cell Permit is not to be used.
 	if (*crc_from_permit != calc_crc32) {
-		puts("SSE 13 - CELL PERMIT CRC INVALID\n");
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_CRC,"SSE 13 - CELL PERMIT CRC INVALID");
 	}
 
 
 	// All permit characters except cellname should be convertable to HEX
 	// Otherwise the cell permit is incorrect
 	if (!is_hex(cellpermit, VALID_CELLNAME_SIZE, VALID_CELLPERMIT_SIZE - VALID_CELLNAME_SIZE)) {
-		puts("SSE 12 - CELL PERMIT INCORRECT FORMAT\n");
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_CRC,"SSE 12 - CELL PERMIT INCORRECT FORMAT");
 	}
 
 
 	time_t expiry_time;
 	if (!parseYYYYMMDD(cellpermit.substr(8, 8), expiry_time)) {
-		puts("SSE 12 - CELL PERMIT INCORRECT FORMAT\n");
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_CRC,"SSE 12 - CELL PERMIT INCORRECT FORMAT");
 	}
 
 	time_t t = std::time(0);
 	tm* now = std::localtime(&t);
 	if (expiry_time < t) {
-		puts("SSE 15 - Subscription service has expired. Please contact your data supplier to renew the subscription licence.\n");
+		warning = S63Exception::WARNING_EXPIRED;
+		// puts("SSE 15 - Subscription service has expired. Please contact your data supplier to renew the subscription licence.\n");
 	}
 	else {
 		time_t diff = expiry_time - t;
 
 		if (SECONDS_TO_DAYS(diff) <= 30) {
-
-			puts("SSE 20 - Subscription service will expire in less than 30 days. Please contact your data supplier to renew the subscription licence.\n");
+			warning = S63Exception::WARNING_EXPIRING_30;
+			// puts("SSE 20 - Subscription service will expire in less than 30 days. Please contact your data supplier to renew the subscription licence.\n");
 		}
 
 	}
 
-	return true;
+	return warning;
 
 }
 
@@ -393,11 +390,7 @@ std::pair<std::string, std::string> S63::extractCellKeysFromCellpermit(const std
 		);
 	}
 
-	if (!validateCellPermit(cellpermit, HW_ID)) {
-		throw S63Exception(S63Exception::S63_ERR_PERMIT,
-			"Invalid cellpermit"
-		);
-	}
+	validateCellPermit(cellpermit, HW_ID);
 
 	string ECK1 = hex_to_string(cellpermit.substr(16, 16));
 	string ECK2 = hex_to_string(cellpermit.substr(32, 16));
