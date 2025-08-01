@@ -26,6 +26,14 @@ if(BUILD_TEST)
     add_executable(s63test ${CMAKE_CURRENT_SOURCE_DIR}/tests/test.cpp ${SRCS} ${HDRS})
     target_link_libraries(s63test blowfish inih zlib)
     target_include_directories(s63test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+    add_custom_command(
+        TARGET s63test
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/dataset
+        ${CMAKE_BINARY_DIR}/dataset
+    )
 endif()
 
 option(BUILD_EXTRACTOR "Build s63 extractor util" OFF)
