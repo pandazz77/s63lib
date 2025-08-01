@@ -115,24 +115,20 @@ bool S63::_validateCellPermit(const std::string& cellpermit, const std::string& 
 
 
 
-S63Error S63::decryptCell(std::string& buf, const std::string& key) {
+void S63::decryptCell(std::string& buf, const std::string& key) {
 
 	size_t size = buf.size();
 	if (size < 8 || size % 8 != 0) {
-		puts("Wrong file size\n");
-		return S63_ERR_DATA;
+		throw S63Exception(S63Exception::S63_ERR_DATA,"Wrong file size");
 	}
 
 	m_bf.setKey(key);
 	m_bf.decrypt((unsigned char*)buf.data(), 8);
 	if (*reinterpret_cast<const uint32_t*>(buf.data()) != VALID_ZIP_SIGNATURE) {
-	
-		return S63_ERR_KEY;
+		throw S63Exception(S63Exception::S63_ERR_KEY,"S63_ERR_KEY");
 	}
 
 	m_bf.decrypt(buf);
-
-	return S63_ERR_OK;
 }
 
 void S63::encryptCell(std::string& buf, const std::string& key) {
@@ -142,21 +138,19 @@ void S63::encryptCell(std::string& buf, const std::string& key) {
 
 }
 
-S63Error S63::decryptCell(const std::string& path, const key_pair& keys, std::string& out_buf) {
+void S63::decryptCell(const std::string& path, const key_pair& keys, std::string& out_buf) {
 
 	std::ifstream encryptedFile(path, std::ios::binary);
 
 	if (!encryptedFile.is_open()) {
-		puts("Could not open encrypted file for reading\n");
-		return S63_ERR_FILE;
+		throw S63Exception(S63Exception::S63_ERR_FILE,"Could not open encrypted file for reading");
 	}
 
 
 	encryptedFile.seekg(0, std::ios::end);
 	size_t size = encryptedFile.tellg();
 	if (size % 8 != 0) {
-		puts("Wrong file size\n");
-		return S63_ERR_DATA;
+		throw S63Exception(S63Exception::S63_ERR_DATA,"Wrong file size");
 	}
 	m_bf.setKey(keys.first);
 	encryptedFile.seekg(0);
@@ -169,14 +163,12 @@ S63Error S63::decryptCell(const std::string& path, const key_pair& keys, std::st
 	m_bf.decrypt((unsigned char*)test_buf, 8);
 	if (*reinterpret_cast<uint32_t*>(&test_buf[0]) != VALID_ZIP_SIGNATURE) {
 
-		puts("First key invalid\n");
+		// puts("First key invalid\n");
 		m_bf.setKey(keys.second);
 
 		m_bf.decrypt((unsigned char*)test_buf, 8);
 		if (*reinterpret_cast<const uint32_t*>(&test_buf[0]) != VALID_ZIP_SIGNATURE) {
-
-			puts("SSE 21 - WARNING DECRYPTION FAILED - DECRYPTION KEYS INVALID\n");
-			return S63_ERR_KEY;
+			throw S63Exception(S63Exception::S63_ERR_KEY,"SSE 21 - WARNING DECRYPTION FAILED - DECRYPTION KEYS INVALID");
 		}
 
 	}
@@ -188,38 +180,30 @@ S63Error S63::decryptCell(const std::string& path, const key_pair& keys, std::st
 	encryptedFile.close();
 
 	m_bf.decrypt(out_buf);
-
-	return S63_ERR_OK;
 }
 
-S63Error S63::decryptAndUnzipCellByKey(const std::string& in_path, const key_pair& keys, const std::string& out_path) {
+void S63::decryptAndUnzipCellByKey(const std::string& in_path, const key_pair& keys, const std::string& out_path) {
 
 	std::string decrypted;
 
-	S63Error err = decryptCell(in_path,keys,decrypted);
-	if (err != S63_ERR_OK) {
-		return err;
-	}
+	decryptCell(in_path,keys,decrypted);
 
 	// Cell compressed with zip. So we got to unzip it.
 	SimpleZip unz;
 	string out_buf;
 	if (!unz.unzip(decrypted, out_buf)) {
-		puts("Cant unzip cell\n");
-		return S63_ERR_ZIP;
+		throw S63Exception(S63Exception::S63_ERR_ZIP,"Cant unzip cell");
 	}
 
 	std::ofstream decryptedFile(out_path, std::ios::binary);
 
 	if (!decryptedFile.is_open()) {
-		puts("Could not open dencrypted file for writing\n");
-		return S63_ERR_FILE;
+		throw S63Exception(S63Exception::S63_ERR_FILE,"Could not open dencrypted file for writing");
 	}
 
 	decryptedFile.write(out_buf.data(), out_buf.size());
 	decryptedFile.close();
-	printf("Cell succefully decrypted\n");
-	return S63_ERR_OK;
+	// printf("Cell succefully decrypted\n");
 }
 
 
@@ -227,18 +211,22 @@ std::string S63::createUserPermit(const std::string& M_KEY, const std::string& H
 
 
 	if (M_KEY.size() != VALID_M_KEY_SIZE) {
-		printf("Invalid M_KEY size. Must be %d characters\n", VALID_M_KEY_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid M_KEY size. Must be " + std::to_string(VALID_M_KEY_SIZE) + " characters"
+		);
+		
 	}
 
 	if (HW_ID.size() != VALID_HW_ID_SIZE) {
-		printf("Invalid HW_ID size. Must be %d characters\n", VALID_HW_ID_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid HW_ID size. Must be " + std::to_string(VALID_HW_ID_SIZE) + " characters"
+		);
 	}
 
 	if (M_ID.size() != VALID_M_ID_SIZE) {
-		printf("Invalid M_ID size. Must be %d characters\n", VALID_M_ID_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid M_ID size. Must be " + std::to_string(VALID_M_ID_SIZE) + " characters"
+		);
 	}
 
 	//a) Encrypt HW_ID using the Blowfish algorithm with M_KEY as the key.
@@ -277,19 +265,18 @@ std::string S63::extractHwIdFromUserpermit(const std::string& userpermit, const 
 	//  Encrypted HW_ID      CRC       M_ID
 
 	if (userpermit.size() != VALID_USERPERMIT_SIZE) {
-		puts("Invalid userpermit size\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"Invalid userpermit size");
 	}
 
 	// Check if userpermit contains only HEX symbols
 	if (!is_hex(userpermit,0, VALID_USERPERMIT_SIZE)) {
-		puts("SSE 17 - WARNING INVALID USERPERMIT\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 17 - WARNING INVALID USERPERMIT");
 	}
 
 	if (M_KEY.size() != VALID_M_KEY_SIZE) {
-		printf("Invalid M_KEY size. Must be %d characters\n", VALID_M_KEY_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid M_KEY size. Must be " + std::to_string(VALID_M_KEY_SIZE) + " characters"
+		);
 	}
 
 
@@ -299,8 +286,7 @@ std::string S63::extractHwIdFromUserpermit(const std::string& userpermit, const 
 	//b) Extract the Check Sum(8 hex characters) from the User Permit.
 	std::string permit_crc32 = hex_to_string(userpermit, VALID_USERPERMIT_SIZE - 12, 8);
 	if (permit_crc32.size() != 4) {
-		puts("SSE 17 - WARNING INVALID USERPERMIT\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 17 - WARNING INVALID USERPERMIT");
 	}
 
 
@@ -310,15 +296,13 @@ std::string S63::extractHwIdFromUserpermit(const std::string& userpermit, const 
 	// differ the User Permit is invalid and the HW_ID cannot be obtained.
 	cacl_crc32 = swap_bytes(cacl_crc32);
 	if (0 != std::memcmp(permit_crc32.data(), &cacl_crc32, sizeof(cacl_crc32))) {
-		puts("SSE 17 - WARNING INVALID USERPERMIT\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 17 - WARNING INVALID USERPERMIT");
 	}
 	
 	//e) If the User Permit is valid, convert the Encrypted HW_ID to 8 bytes.
 	string hw_id = hex_to_string(userpermit, 0, 16);
 	if (hw_id.size() != 8) {
-		puts("SSE 17 - WARNING INVALID USERPERMIT\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 17 - WARNING INVALID USERPERMIT");
 	}
 
 	//f) Decrypt the Encrypted HW_ID using the Blowfish algorithm with M_KEY as the key.The output will
@@ -327,8 +311,7 @@ std::string S63::extractHwIdFromUserpermit(const std::string& userpermit, const 
 	m_bf.decrypt(hw_id);
 
 	if (hw_id.size() != VALID_HW_ID_SIZE) {
-		puts("SSE 17 - WARNING INVALID USERPERMIT\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 17 - WARNING INVALID USERPERMIT");
 	}
 
 	return hw_id;
@@ -339,27 +322,32 @@ std::string S63::extractHwIdFromUserpermit(const std::string& userpermit, const 
 std::string S63::createCellPermit(const std::string& HW_ID, const std::string& CK1, const std::string& CK2, const std::string& cellname, const std::string& expiry_date) {
 
 	if (cellname.size() != VALID_CELLNAME_SIZE) {
-		printf("Invalid CellName size. Must be %d characters\n", VALID_CELLNAME_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_DATA,
+			"Invalid CellName size. Must be " + std::to_string(VALID_CELLNAME_SIZE) + " characters"
+		);
 	}
 	if (HW_ID.size() != VALID_HW_ID_SIZE) {
-		printf("Invalid HW_ID size. Must be %d characters\n", VALID_HW_ID_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid HW_ID size. Must be " + std::to_string(VALID_HW_ID_SIZE) + " characters"
+		);
 	}
 
 	if (CK1.size() != VALID_CELL_KEY_SIZE || CK2.size() != VALID_CELL_KEY_SIZE) {
-		printf("Invalid VALID_CELL_KEY_SIZE size. Must be %d characters\n", VALID_CELL_KEY_SIZE);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid VALID_CELL_KEY_SIZE size. Must be " + std::to_string(VALID_CELL_KEY_SIZE) + " characters"
+		);
 	}
 
 	if (expiry_date.size() != 8 ) {
-		printf("Invalid Expity date size. Must be %d characters\n", 8);
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_DATA,
+			"Invalid Expiry date size. Must be " + std::to_string(8) + " characters"
+		);
 	}
 	std::time_t expiry_time;
 	if (!parseYYYYMMDD(expiry_date, expiry_time)) {
-		puts("Invalid expiry date string. Must be in YYYYMMDD format and correct\n");
-		return "";
+		throw S63Exception(S63Exception::S63_ERR_DATA,
+			"Invalid expiry date string. Must be in YYYYMMDD format and correct"
+		);
 	}
 	string cellpermit = cellname;
 	cellpermit.reserve(VALID_CELLPERMIT_SIZE);
@@ -396,19 +384,19 @@ std::string S63::createCellPermit(const std::string& HW_ID, const std::string& C
 
 }
 
-std::pair<std::string, std::string> S63::extractCellKeysFromCellpermit(const std::string& cellpermit, const std::string& HW_ID, bool& ok) {
+std::pair<std::string, std::string> S63::extractCellKeysFromCellpermit(const std::string& cellpermit, const std::string& HW_ID) {
 	pair<string, string> cell_keys;
 
 	if (HW_ID.size() != VALID_HW_ID_SIZE) {
-		printf("Invalid HW_ID size. Must be %d characters\n", VALID_HW_ID_SIZE);
-		ok = false;
-		return cell_keys;
+		throw S63Exception(S63Exception::S63_ERR_KEY,
+			"Invalid HW_ID size. Must be " + std::to_string(VALID_HW_ID_SIZE) + " characters"
+		);
 	}
 
 	if (!validateCellPermit(cellpermit, HW_ID)) {
-		puts("Invalid cellpermit\n");
-		ok = false;
-		return cell_keys;
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,
+			"Invalid cellpermit"
+		);
 	}
 
 	string ECK1 = hex_to_string(cellpermit.substr(16, 16));
@@ -424,7 +412,6 @@ std::pair<std::string, std::string> S63::extractCellKeysFromCellpermit(const std
 	m_bf.decrypt(ECK2);
 	cell_keys.first  = std::move(ECK1);
 	cell_keys.second = std::move(ECK2);
-	ok = true;
 	return cell_keys;
 
 }

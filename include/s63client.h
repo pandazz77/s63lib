@@ -24,6 +24,7 @@
  */
 
 #include "s63.h"
+#include <unordered_map>
 
 class S63Client : public S63
 {
@@ -51,8 +52,8 @@ public:
 	// then decrypted and unziped cell retuns as a memory buffer (yeah, string used just as a byte array)
 	std::string open(const std::string& path);
 
-	S63Error decryptAndUnzipCell(const std::string& in_path, const std::string& out_path);
-	S63Error decryptAndUnzipCell(const std::string& in_path, const std::string& cellpermit, const std::string& out_path);
+	void decryptAndUnzipCell(const std::string& in_path, const std::string& out_path);
+	void decryptAndUnzipCell(const std::string& in_path, const std::string& cellpermit, const std::string& out_path);
 	
 private:
 	std::string m_mkey;

@@ -24,7 +24,6 @@
  */
 
 #include <string>
-#include <unordered_map>
 
 #include "blowfish.h"
 
@@ -36,14 +35,33 @@
 #define VALID_M_KEY_SIZE 5
 #define VALID_CELL_KEY_SIZE 5
 
-enum S63Error {
-	S63_ERR_OK,
-	S63_ERR_FILE, 
-	S63_ERR_DATA, 
-	S63_ERR_PERMIT,
-	S63_ERR_KEY,
-	S63_ERR_ZIP,
-	S63_ERR_CRC
+class S63Exception: public std::exception{
+	public:
+		enum S63Error {
+			S63_ERR_OK,
+			S63_ERR_FILE, 
+			S63_ERR_DATA, 
+			S63_ERR_PERMIT,
+			S63_ERR_KEY,
+			S63_ERR_ZIP,
+			S63_ERR_CRC
+		};
+
+
+		S63Exception(const S63Error &code,const std::string &message): 
+            _code(code), _message(message) {}
+
+        const char *what() const noexcept override {
+            return _message.c_str();
+        }
+
+        const S63Error code() const noexcept {
+            return _code;
+        }
+
+	private:
+		const std::string _message;
+		const S63Error _code; 
 };
 
 class S63 {
@@ -55,15 +73,15 @@ public:
 	static std::string extractHwIdFromUserpermit(const std::string& userpermit, const std::string& M_KEY);
 
 	static std::string createCellPermit(const std::string& HW_ID, const std::string& CK1, const std::string& CK2, const std::string& cellname, const std::string& expiry_date);
-	static std::pair<std::string,std::string> extractCellKeysFromCellpermit(const std::string& cellpermit, const std::string& HW_ID, bool& ok);
+	static std::pair<std::string,std::string> extractCellKeysFromCellpermit(const std::string& cellpermit, const std::string& HW_ID);
 	
 	// Note, that after being decrypted, cell still need to be uncompressed
-	static S63Error decryptCell(const std::string& path, const std::pair<std::string, std::string>& keys, std::string& out_buf);
-	static S63Error decryptCell(std::string& buf, const std::string& key);
+	static void decryptCell(const std::string& path, const std::pair<std::string, std::string>& keys, std::string& out_buf);
+	static void decryptCell(std::string& buf, const std::string& key);
 
 	static void encryptCell(std::string& buf, const std::string& key);
 
-	static S63Error decryptAndUnzipCellByKey(const std::string& in_path, const std::pair<std::string, std::string>& keys, const std::string& out_path);
+	static void decryptAndUnzipCellByKey(const std::string& in_path, const std::pair<std::string, std::string>& keys, const std::string& out_path);
 
 protected:
 	static bool _validateCellPermit(const std::string& permit, const std::string& HW_ID6);

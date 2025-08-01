@@ -40,8 +40,7 @@ static void testS63() {
 
     assert(S63::createCellPermit(test_hw_id, hex_to_string(test_ck1_hex), hex_to_string(test_ck2_hex),
         test_cellname, test_expiry_date) == test_cellpermit);
-    bool ok;
-    auto cell_keys = S63::extractCellKeysFromCellpermit(test_cellpermit, test_hw_id, ok);
+    auto cell_keys = S63::extractCellKeysFromCellpermit(test_cellpermit, test_hw_id);
     assert(cell_keys.first == hex_to_string(test_ck1_hex));
     assert(cell_keys.second == hex_to_string(test_ck2_hex));
 
@@ -125,41 +124,6 @@ int main(int argc, char *argv[])
     testS63();
     test_encrypt();
     puts("All test passed!\n");
-
-
-    //S63Client s63(HW_ID, "12345","12");
-    //s63.importPermitFile("test_data\\PERMIT.txt");
-    
-    //return 0;
-    //s63.installPermit("UA5T351920171130DA789B5FACF38036DA789B5FACF38036046BB7FB5CA8C749");
-    //string baseCell = "UA5T3519";
-
-    //for (const auto& entry : fs::recursive_directory_iterator("D:\\Maps\\s63\\ENC_ROOT\\UA\\" + baseCell)) {
-    //	if (!entry.is_directory()) {
-    //		string path = entry.path().string();
-    //		string name = entry.path().filename().string();
-    //		name = name.substr(0, name.find('.'));
-    //		string ext = entry.path().filename().extension().string();
-    //		if (name.find(baseCell) != string::npos)
-    //			//decryptChart(decriptedCellKey, path, name, ext);
-    //			s63.decryptAndUnzipCell(path, "decripted/" + name + "" + ext);
-    //	}
-    //}
-
-    /*auto cell = s63.open("D:\\Maps\\s63\\ENC_ROOT\\UA\\UA5T3519\\3\\0\\UA5T3519.000");
-
-    cout << cell.getSize() << endl;
-
-    std::vector<char> buf(cell.getSize());
-
-    int read = cell.read(buf.data(), cell.getSize());
-
-    cout <<"read " << read << endl;
-
-    read = cell.read(buf.data(), 1);
-
-    cout << "read " << read << endl;*/
-
 
     return 0;
 }

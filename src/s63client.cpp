@@ -40,35 +40,29 @@ S63Client::S63Client(const std::string& HW_ID, const std::string& M_KEY, const s
 }
 
 
-S63Error S63Client::decryptAndUnzipCell(const std::string& in_path, const std::string& out_path) {
+void S63Client::decryptAndUnzipCell(const std::string& in_path, const std::string& out_path) {
 
 	string cellname = in_path.substr(in_path.size() - VALID_CELLNAME_SIZE - 4, VALID_CELLNAME_SIZE);
 
 	if (m_permits.find(cellname) == m_permits.end()) {
 		//SSE 21 – Decryption failed no valid cell permit found. Permits may be for another system or new 
 		//permits may be required, please contact your supplier to obtain a new licence.”
-		printf("There is no permit for basecell %s\n", cellname.c_str());
-		return S63_ERR_PERMIT;
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"There is no permit for basecell "+cellname);
 	}
 
 	return decryptAndUnzipCell(in_path, m_permits[cellname], out_path);
 
 }
 
-S63Error S63Client::decryptAndUnzipCell(const std::string& in_path, const std::string& cellpermit, const std::string& out_path) {
+void S63Client::decryptAndUnzipCell(const std::string& in_path, const std::string& cellpermit, const std::string& out_path) {
 
 	if (cellpermit.size() != VALID_CELLPERMIT_SIZE) {
-		puts("Wrong permit size\n");
-		return S63_ERR_PERMIT;
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"Wrong permit size");
 	}
-	bool ok;
-	const auto keys = extractCellKeysFromCellpermit(cellpermit, m_hwid, ok);
-	if (!ok) {
-		return S63_ERR_PERMIT;
-	}
+	const auto keys = extractCellKeysFromCellpermit(cellpermit, m_hwid);
 	std::string cellKey = hex_to_string(cellpermit.substr(16, 16));
 	if (cellKey.size() != 8) {
-		return S63_ERR_PERMIT;
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"Wrong cell key size");
 	}
 
 	m_bf.setKey(m_hwid6);
@@ -83,8 +77,7 @@ bool S63Client::importPermitFile(const std::string& path) {
 	std::ifstream file(path);
 
 	if (!file.is_open()) {
-		puts("Could not open permit file\n");
-		return false;
+		throw S63Exception(S63Exception::S63_ERR_FILE,"Could not open permit file");
 	}
 	string line;
 	bool enc = false;
@@ -108,8 +101,7 @@ bool S63Client::importPermitFile(const std::string& path) {
 
 void S63Client::setHWID(const std::string& HW_ID) {
 	if (HW_ID.size() != 5) {
-		puts("Bad hw_id\n");
-		return;
+		throw S63Exception(S63Exception::S63_ERR_KEY,"Bad hw_id");
 	}
 
 	m_hwid = HW_ID;
@@ -127,7 +119,7 @@ bool S63Client::installCellPermit(const std::string& cellpermit) {
 
 	m_permits[cellname] = cellpermit;
 
-	printf("Permit for basecell %s succefully installed\n", cellname.c_str());
+	// printf("Permit for basecell %s succefully installed\n", cellname.c_str());
 
 	return true;
 }
@@ -137,24 +129,17 @@ std::string S63Client::open(const std::string& path) {
 	string cellname = path.substr(path.size() - VALID_CELLNAME_SIZE - 4, VALID_CELLNAME_SIZE);
 
 	if (m_permits.find(cellname) == m_permits.end()) {
-		puts("SSE 21 – Decryption failed no valid cell permit found. Permits may be for another system or new \
-		permits may be required, please contact your supplier to obtain a new licence.”");
-		return {};
+		throw S63Exception(S63Exception::S63_ERR_PERMIT,"SSE 21 – Decryption failed no valid cell permit found. Permits may be for another system or new \
+		permits may be required, please contact your supplier to obtain a new licence.");
 	}
-	bool ok;
-	key_pair keys = S63::extractCellKeysFromCellpermit(m_permits[cellname],m_hwid,ok);
+	key_pair keys = S63::extractCellKeysFromCellpermit(m_permits[cellname],m_hwid);
 
-	if (!ok) {
-		return {};
-	}
 	std::string decrypted;
 
-	if (S63::decryptCell(path, keys, decrypted) != S63_ERR_OK) {
-		return {};
-	}
+	S63::decryptCell(path, keys, decrypted);
 	std::string unzipped;
 	if (!SimpleZip::unzip(decrypted, unzipped)) {
-		return {};
+		throw S63Exception(S63Exception::S63_ERR_ZIP,"Cannot unzip cell");
 	}
 	
 	return unzipped;
