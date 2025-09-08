@@ -55,6 +55,5 @@ if(S63LIB_STATIC)
 endif()
 
 add_library(${PROJECT_NAME} ${LIB_TYPE} ${SRCS} ${HDRS})
-set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_link_libraries(${PROJECT_NAME} blowfish ${ZLIB_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
