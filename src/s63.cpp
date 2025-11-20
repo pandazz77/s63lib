@@ -123,10 +123,15 @@ S63Error S63::decryptCell(std::string& buf, const std::string& key) {
 		return S63_ERR_DATA;
 	}
 
+	// To ensure that key is valid, let`s decrypt the first 8 bytes of cell and
+	// test it against the valid zip signature. 
+	char test_buf[8];
+	std::memcpy(test_buf,buf.data(),8);
+
 	m_bf.setKey(key);
-	m_bf.decrypt((unsigned char*)buf.data(), 8);
-	if (*reinterpret_cast<const uint32_t*>(buf.data()) != VALID_ZIP_SIGNATURE) {
 	
+	m_bf.decrypt((unsigned char*)test_buf, 8);
+	if (*reinterpret_cast<const uint32_t*>(test_buf) != VALID_ZIP_SIGNATURE) {
 		return S63_ERR_KEY;
 	}
 
@@ -151,44 +156,14 @@ S63Error S63::decryptCell(const std::string& path, const key_pair& keys, std::st
 		return S63_ERR_FILE;
 	}
 
+	out_buf = std::string(
+        std::istreambuf_iterator<char>(encryptedFile),
+        std::istreambuf_iterator<char>()
+    );
 
-	encryptedFile.seekg(0, std::ios::end);
-	size_t size = encryptedFile.tellg();
-	if (size % 8 != 0) {
-		puts("Wrong file size\n");
-		return S63_ERR_DATA;
+	if(decryptCell(out_buf,keys.first)!=S63_ERR_OK){ // first key invalid
+		return decryptCell(out_buf,keys.second);
 	}
-	m_bf.setKey(keys.first);
-	encryptedFile.seekg(0);
-
-	// To ensure that key is valid, let`s decrypt the first 8 bytes of cell and
-	// test it against the valid zip signature. 
-	char test_buf[8];
-	encryptedFile.read(test_buf, 8);
-
-	m_bf.decrypt((unsigned char*)test_buf, 8);
-	if (*reinterpret_cast<uint32_t*>(&test_buf[0]) != VALID_ZIP_SIGNATURE) {
-
-		puts("First key invalid\n");
-		m_bf.setKey(keys.second);
-
-		m_bf.decrypt((unsigned char*)test_buf, 8);
-		if (*reinterpret_cast<const uint32_t*>(&test_buf[0]) != VALID_ZIP_SIGNATURE) {
-
-			puts("SSE 21 - WARNING DECRYPTION FAILED - DECRYPTION KEYS INVALID\n");
-			return S63_ERR_KEY;
-		}
-
-	}
-	encryptedFile.seekg(0);
-
-	// Ok, key is valid. Now read all the whole file an decrypt it
-	out_buf.resize(size);
-	encryptedFile.read(const_cast<char*>(out_buf.data()), size);
-	encryptedFile.close();
-
-	m_bf.decrypt(out_buf);
-
 	return S63_ERR_OK;
 }
 
